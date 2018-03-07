@@ -224,6 +224,7 @@ export const exportRoutes = async ({ config, clientStats }) => {
       let head = {}
       let clientScripts = []
       let clientStyleSheets = []
+      let ClientCssHash
 
       let FinalComp
 
@@ -242,12 +243,13 @@ export const exportRoutes = async ({ config, clientStats }) => {
       const renderToStringAndExtract = comp => {
         // Rend the app to string!
         const appHtml = renderToString(comp)
-        const { scripts, stylesheets } = flushChunks(clientStats, {
+        const { scripts, stylesheets, CssHash } = flushChunks(clientStats, {
           chunkNames,
         })
 
         clientScripts = scripts
         clientStyleSheets = stylesheets
+        ClientCssHash = CssHash
 
         // Extract head calls using Helmet synchronously right after renderToString
         // to not introduce any race conditions in the meta data rendering
@@ -342,6 +344,7 @@ export const exportRoutes = async ({ config, clientStats }) => {
       const BodyWithMeta = ({ children, ...rest }) => (
         <body {...head.bodyProps} {...rest}>
           {children}
+          <ClientCssHash />
           {!route.redirect && (
             <script
               type="text/javascript"
