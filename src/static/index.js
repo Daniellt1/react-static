@@ -224,6 +224,8 @@ export const exportRoutes = async ({ config, clientStats }) => {
       let head = {}
       let clientScripts = []
       let clientStyleSheets = []
+      let clientCss
+      let ClientCssHash
 
       let FinalComp
 
@@ -242,12 +244,15 @@ export const exportRoutes = async ({ config, clientStats }) => {
       const renderToStringAndExtract = comp => {
         // Rend the app to string!
         const appHtml = renderToString(comp)
-        const { scripts, stylesheets } = flushChunks(clientStats, {
+        const { scripts, stylesheets, CssHash, css } = flushChunks(clientStats, {
           chunkNames,
+          outputPath: config.paths.DIST
         })
 
         clientScripts = scripts
         clientStyleSheets = stylesheets
+        ClientCssHash = CssHash
+        clientCss = css
 
         // Extract head calls using Helmet synchronously right after renderToString
         // to not introduce any race conditions in the meta data rendering
@@ -311,7 +316,7 @@ export const exportRoutes = async ({ config, clientStats }) => {
                   href={`${config.publicPath}${script}`}
                 />
               ))}
-            {!route.redirect &&
+            {!route.redirect && !config.inlineCss &&
               clientStyleSheets.map(styleSheet => (
                 <link
                   key={`clientStyleSheet_${styleSheet}`}
@@ -320,7 +325,7 @@ export const exportRoutes = async ({ config, clientStats }) => {
                   href={`${config.publicPath}${styleSheet}`}
                 />
               ))}
-            {!route.redirect &&
+            {!route.redirect && !config.inlineCss &&
               clientStyleSheets.map(styleSheet => (
                 <link
                   key={`clientStyleSheet_${styleSheet}`}
@@ -332,6 +337,15 @@ export const exportRoutes = async ({ config, clientStats }) => {
             {head.noscript}
             {head.script}
             {head.style}
+            {config.inlineCss &&
+              <style
+                key="clientCss"
+                type="text/css"
+                dangerouslySetInnerHTML={{
+                  __html: clientCss.toString().replace(/<style>|<\/style>/gi, '')
+                }}
+              />
+            }
             {childrenArray}
           </head>
         )
@@ -342,6 +356,7 @@ export const exportRoutes = async ({ config, clientStats }) => {
       const BodyWithMeta = ({ children, ...rest }) => (
         <body {...head.bodyProps} {...rest}>
           {children}
+          <ClientCssHash />
           {!route.redirect && (
             <script
               type="text/javascript"
